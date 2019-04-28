@@ -3,16 +3,16 @@ __version__="v3.2 beta1"
 welcome_block="""
 # Multi-Echo ICA, Version %s
 #
-# Kundu, P., Brenowitz, N.D., Voon, V., Worbe, Y., Vertes, P.E., Inati, S.J., Saad, Z.S., 
-# Bandettini, P.A. & Bullmore, E.T. Integrated strategy for improving functional 
+# Kundu, P., Brenowitz, N.D., Voon, V., Worbe, Y., Vertes, P.E., Inati, S.J., Saad, Z.S.,
+# Bandettini, P.A. & Bullmore, E.T. Integrated strategy for improving functional
 # connectivity mapping using multiecho fMRI. PNAS (2013).
 #
-# Kundu, P., Inati, S.J., Evans, J.W., Luh, W.M. & Bandettini, P.A. Differentiating 
+# Kundu, P., Inati, S.J., Evans, J.W., Luh, W.M. & Bandettini, P.A. Differentiating
 #   BOLD and non-BOLD signals in fMRI time series using multi-echo EPI. NeuroImage (2011).
 # http://dx.doi.org/10.1016/j.neuroimage.2011.12.028
 #
 # PROCEDURE 2 : Computes ME-PCA and ME-ICA
-# -Computes T2* map 
+# -Computes T2* map
 # -Computes PCA of concatenated ME data, then computes TE-dependence of PCs
 # -Computes ICA of TE-dependence PCs
 # -Identifies TE-dependent ICs, outputs high-\kappa (BOLD) component
@@ -37,7 +37,7 @@ import cPickle as pickle
 import gzip
 import pdb
 
-if 'DEBUG' in argv: 
+if 'DEBUG' in argv:
 	import ipdb
 	debug_mode = True
 else: debug_mode = False
@@ -108,8 +108,8 @@ def rankvec(vals):
 	return ranks
 
 def niwrite(data,affine, name , header=None):
-	stdout.write(" + Writing file: %s ...." % name) 
-	
+	stdout.write(" + Writing file: %s ...." % name)
+
 	thishead = header
 	if thishead == None:
 		thishead = head.copy()
@@ -141,7 +141,7 @@ def uncat2echos(data,Ne):
 	Input:
 	data shape is (nx,ny,Ne,nz,nt)
 	"""
-    	nx,ny = data.shape[0:2]
+	nx,ny = data.shape[0:2]
 	nz = data.shape[2]*Ne
 	if len(data.shape) >4:
 		nt = data.shape[4]
@@ -269,7 +269,7 @@ def t2smap(catd,mask,tes):
 	#Goodness of fit
 	alpha = (np.abs(B)**2).sum(axis=0)
 	t2s_fit = blah = (alpha - res)/(2*res)
-	
+
 	out = np.squeeze(unmask(t2s,mask)),np.squeeze(unmask(s0,mask)),unmask(t2s_fit,mask)
 
 	return out
@@ -343,9 +343,9 @@ def get_coeffs(data,mask,X,add_const=False):
 	Output:
 
 	out  has shape (nx,ny,nz,nc)
-	""" 
+	"""
 	mdata = fmask(data,mask).transpose()
-        
+
         X=np.atleast_2d(X)
         if X.shape[0]==1: X=X.T
         Xones = np.atleast_2d(np.ones(np.min(mdata.shape))).T
@@ -379,7 +379,7 @@ def optcom(data,t2s,tes,mask,useG=True):
 
 	out.shape = (nx,ny,nz,Nt)
 	"""
-	nx,ny,nz,Ne,Nt = data.shape 
+	nx,ny,nz,Ne,Nt = data.shape
 
 	if useG:
 		fdat = fmask(data,mask)
@@ -388,15 +388,15 @@ def optcom(data,t2s,tes,mask,useG=True):
 	else:
 		fdat = fmask(data,mask)
 		ft2s = fmask(t2s,mask)
-	
+
 	tes = tes[np.newaxis,:]
 	ft2s = ft2s[:,np.newaxis]
-	
+
 	if options.combmode == 'ste':
 		alpha = fdat.mean(-1)*tes
-	else: 
+	else:
 		alpha = tes * np.exp(-tes /ft2s)
-	
+
 	alpha = np.tile(alpha[:,:,np.newaxis],(1,1,Nt))
 
 	fout  = np.average(fdat,axis = 1,weights=alpha)
@@ -410,7 +410,7 @@ def getelbow(ks,val=False):
 	nc = ks.shape[0]
 	coords = np.array([np.arange(nc),ks])
 	p  = coords - np.tile(np.reshape(coords[:,0],(2,1)),(1,nc))
-	b  = p[:,-1] 
+	b  = p[:,-1]
 	b_hat = np.reshape(b/np.sqrt((b**2).sum()),(2,1))
 	proj_p_b = p - np.dot(b_hat.T,p)*np.tile(b_hat,(1,nc))
 	d = np.sqrt((proj_p_b**2).sum(axis=0))
@@ -426,7 +426,7 @@ def getelbow2(ks,val=False):
 	ds = np.array([  (ks[nk-5-ii-1]>ks[nk-5-ii:nk].mean()+2*ks[nk-5-ii:nk].std()) for ii in range(nk-5) ][::-1],dtype=np.int)
 	dsum = []
 	c_ = 0
-	for d_ in ds: 
+	for d_ in ds:
 		c_=(c_+d_)*d_
 		dsum.append(c_)
 	e2=np.argmax(np.array(dsum))
@@ -438,7 +438,7 @@ def getelbow3(ks,val=False):
 	#Elbow using curvature - aggressive
 	ks = np.sort(ks)[::-1]
 	dKdt = ks[:-1]-ks[1:]
-	dKdt2 = dKdt[:-1]-dKdt[1:]		
+	dKdt2 = dKdt[:-1]-dKdt[1:]
 	curv = np.abs((dKdt2/(1+dKdt[:-1]**2.)**(3./2.)))
 	curv[np.isnan(curv)]=-1*10**6
 	maxcurv = np.argmax(curv)+2
@@ -483,7 +483,7 @@ def idwtmat(mmix_wt,cAl):
         mmix_iwt[ii] = pywt.idwt(mmix_wt[ii,:cAl],mmix_wt[ii,cAl:],'db2',correct_size=True)
     return mmix_iwt
 
-def tedpca(ste=0,mlepca=True): 
+def tedpca(ste=0,mlepca=True):
 	nx,ny,nz,ne,nt = catd.shape
 	ste = np.array([int(ee) for ee in str(ste).split(',')])
 	cAl = None
@@ -511,7 +511,7 @@ def tedpca(ste=0,mlepca=True):
 	dz = ((d.T-d.T.mean(0))/d.T.std(0)).T #Variance normalize timeseries
 	dz = (dz-dz.mean())/dz.std() #Variance normalize everything
 
-	#if wvpca: 
+	#if wvpca:
 	#	import ipdb
 	#	ipdb.set_trace()
 	#	print "++Transforming time series from time domain to wavelet domain."
@@ -532,7 +532,7 @@ def tedpca(ste=0,mlepca=True):
 			u = np.dot(np.dot(dz,v.T),np.diag(1./s))
 		else:
 			u,s,v = np.linalg.svd(dz,full_matrices=0)
-		
+
 		sp = s/s.sum()
 		eigelb = sp[getelbow(sp)]
 
@@ -547,9 +547,9 @@ def tedpca(ste=0,mlepca=True):
 			spcumv+=sss
 			spcum.append(spcumv)
 		spcum = np.array(spcum)
-			
+
 		#Compute K and Rho for PCA comps
-		
+
 		#ipdb.set_trace()
 
 		eimum = np.atleast_2d(eim)
@@ -565,7 +565,7 @@ def tedpca(ste=0,mlepca=True):
 		#Save state
 		print "Saving PCA"
 		pcastate = {'u':u,'s':s,'v':v,'ctb':ctb,'eigelb':eigelb,'spmin':spmin,'spcum':spcum}
-		try:		
+		try:
 			pcastate_f = gzip.open(pcastate_fn,'wb')
 			pickle.dump(pcastate,pcastate_f)
 			pcastate_f.close()
@@ -580,7 +580,7 @@ def tedpca(ste=0,mlepca=True):
 
 	np.savetxt('comp_table_pca.txt',ctb[ctb[:,1].argsort(),:][::-1])
 	np.savetxt('mepca_mix.1D',v[ctb[:,1].argsort()[::-1],:].T)
-	
+
 	kappas = ctb[ctb[:,1].argsort(),1]
 	rhos = ctb[ctb[:,2].argsort(),2]
 	fmin,fmid,fmax = getfbounds(ne)
@@ -597,10 +597,10 @@ def tedpca(ste=0,mlepca=True):
 		rhos_lim = rhos[andb([rhos<fmid,rhos>fmin])==2]
 		rho_thr = rhos_lim[getelbow(rhos_lim)]
 	if options.stabilize:
-		pcscore = (np.array(ctb[:,1]>kappa_thr,dtype=np.int)+np.array(ctb[:,2]>rho_thr,dtype=np.int)+np.array(ctb[:,3]>eigelb,dtype=np.int))*np.array(ctb[:,3]>spmin,dtype=np.int)*np.array(spcum<0.95,dtype=np.int)*np.array(ctb[:,2]>fmin,dtype=np.int)*np.array(ctb[:,1]>fmin,dtype=np.int)*np.array(ctb[:,1]!=F_MAX,dtype=np.int)*np.array(ctb[:,2]!=F_MAX,dtype=np.int) 
+		pcscore = (np.array(ctb[:,1]>kappa_thr,dtype=np.int)+np.array(ctb[:,2]>rho_thr,dtype=np.int)+np.array(ctb[:,3]>eigelb,dtype=np.int))*np.array(ctb[:,3]>spmin,dtype=np.int)*np.array(spcum<0.95,dtype=np.int)*np.array(ctb[:,2]>fmin,dtype=np.int)*np.array(ctb[:,1]>fmin,dtype=np.int)*np.array(ctb[:,1]!=F_MAX,dtype=np.int)*np.array(ctb[:,2]!=F_MAX,dtype=np.int)
 	else:
 		pcscore = (np.array(ctb[:,1]>kappa_thr,dtype=np.int)+np.array(ctb[:,2]>rho_thr,dtype=np.int)+np.array(ctb[:,3]>eigelb,dtype=np.int))*np.array(ctb[:,3]>spmin,dtype=np.int)*np.array(ctb[:,1]!=F_MAX,dtype=np.int)*np.array(ctb[:,2]!=F_MAX,dtype=np.int)
-	pcsel = pcscore > 0 
+	pcsel = pcscore > 0
 	pcrej = np.array(pcscore==0,dtype=np.int)*np.array(ctb[:,3]>spmin,dtype=np.int) > 0
 
 	"""
@@ -618,8 +618,8 @@ np.array(pcscore>0).sum()
 		ipdb.set_trace()
 
 	dd = u.dot(np.diag(s*np.array(pcsel,dtype=np.int))).dot(v)
-	
-	#if wvpca: 
+
+	#if wvpca:
 	#	print "++Transforming PCA solution from wavelet domain to time domain"
 	#	dd = idwtmat(dd,cAl)
 
@@ -657,9 +657,9 @@ def write_split_ts(data,comptable,mmix,suffix=''):
 	lowkts = betas[:,rej].dot(mmix.T[rej,:])
 	if len(acc)!=0:
 		niwrite(unmask(betas[:,acc].dot(mmix.T[acc,:]),mask),aff,'_'.join(['hik_ts',suffix])+'.nii')
-	if len(midk)!=0: 
+	if len(midk)!=0:
 		niwrite(unmask(midkts,mask),aff,'_'.join(['midk_ts',suffix])+'.nii')
-	if len(rej)!=0: 
+	if len(rej)!=0:
 		niwrite(unmask(lowkts,mask),aff,'_'.join(['lowk_ts',suffix])+'.nii')
 	niwrite(unmask(fmask(data,mask)-lowkts-midkts,mask),aff,'_'.join(['dn_ts',suffix])+'.nii')
 	return varexpl
@@ -687,16 +687,16 @@ def writefeats(cbetas,comptable,mmix,suffix=''):
 
 	zfac = 1./(mmix.shape[0]-len(acc)-1)*(noise**2).sum(-1) #noise scaling
 	niwrite(zfac,aff,'zfac.nii')
-	
+
 	cbetam = fmask(cbetas[:,:,:,acc],mask)
 	cbetam = (cbetam-cbetam.mean(0))/cbetam.std(0)
 	cbetam = cbetam/fmask(zfac,mask)[:,np.newaxis]
 	cbetam[edm.mean(-1)<1,:] = 0
-	
+
 	niwrite(unmask(cbetam,mask),aff,'_'.join(['feats',suffix])+'.nii')
-	
+
 def computefeats2(data,mmix,mask,normalize=True):
-	#Write feature versions of components 
+	#Write feature versions of components
 	data = data[mask]
 	data_vn = (data-data.mean(axis=-1)[:,np.newaxis])/data.std(axis=-1)[:,np.newaxis]
 	data_R = get_coeffs(unmask(data_vn,mask),mask,mmix)[mask]
@@ -710,7 +710,7 @@ def computefeats2(data,mmix,mask,normalize=True):
 	return data_Z
 
 def writefeats2(data,mmix,mask,suffix=''):
-	#Write feature versions of components 
+	#Write feature versions of components
 	feats = computefeats2(data,mmix,mask)
 	niwrite(unmask(feats,mask),aff,'_'.join(['feats',suffix])+'.nii')
 
@@ -745,13 +745,13 @@ def writect(comptable,ctname='',varexpl='-1',classarr=[]):
 
 def gscontrol_raw(dtrank=4):
 	"""
-	This function uses the spatial global signal estimation approach to modify catd (global variable) to 
+	This function uses the spatial global signal estimation approach to modify catd (global variable) to
 	removal global signal out of individual echo time series datasets. The spatial global signal is estimated
 	from the optimally combined data after detrending with a Legendre polynomial basis of order=0 and degree=dtrank.
 	"""
 
 	print "++ Applying amplitude-based T1 equilibration correction"
-    
+
 	#Legendre polynomial basis for denoising
 	from scipy.special import lpmv
 	Lmix = np.array([lpmv(0,vv,np.linspace(-1,1,OCcatd.shape[-1])) for vv in range(dtrank)]).T
@@ -768,7 +768,7 @@ def gscontrol_raw(dtrank=4):
 	sphis = (detr).min(1)
 	sphis -= sphis.mean()
 	niwrite(unmask(sphis,Gmask),aff,'T1gs.nii',head)
-    
+
 	#Find time course of the spatial global signal, make basis with the Legendre basis
 	glsig = np.linalg.lstsq(np.atleast_2d(sphis).T,dat)[0]
 	glsig = (glsig-glsig.mean() ) / glsig.std()
@@ -784,7 +784,7 @@ def gscontrol_raw(dtrank=4):
 	niwrite(OCcatd,aff,'tsoc_orig.nii',head)
 	OCcatd = unmask(tsoc_nogs,Gmask)
 	niwrite(OCcatd,aff,'tsoc_nogs.nii',head)
-	
+
 	#Project glbase out of each echo
 	for ii in range(Ne):
 		dat = catd[:,:,:,ii,:][Gmask]
@@ -841,7 +841,7 @@ def gscontrol_mmix():
 	mmixnogs_std = mmixnogs.std(-1)
 	mmixnogs_norm = (mmixnogs-mmixnogs_mu[:,np.newaxis])/mmixnogs_std[:,np.newaxis]
 	mmixnogs_norm = np.vstack([np.atleast_2d(np.ones(max(glsig.shape))),glsig,mmixnogs_norm])
-	
+
 	"""
 	Write T1-GS corrected components and mixing matrix
 	"""
@@ -927,15 +927,15 @@ if __name__=='__main__':
 	parser.add_option('',"--manacc",dest='manacc',help="Comma separated list of manually accepted components",default=None)
 	parser.add_option('',"--strict",dest='strict',action='store_true',help="Ignore low-variance ambiguous components",default=False)
 	#parser.add_option('',"--wav",dest='wav',help="Perform wavelet PCA, default False",default=False)
-	parser.add_option('',"--no_gscontrol",dest='no_gscontrol',action='store_true',help="Control global signal using spatial approach",default=False)
+	parser.add_option('',"--raw_gscontrol",dest='raw_gscontrol',action='store_true',help="Control raw global signal using spatial approach",default=False)
 	parser.add_option('',"--kdaw",dest='kdaw',help="Dimensionality augmentation weight (Kappa). Default 10. -1 for low-dimensional ICA",default=10.)
 	parser.add_option('',"--rdaw",dest='rdaw',help="Dimensionality augmentation weight (Rho). Default 1. -1 for low-dimensional ICA",default=1.)
 	parser.add_option('',"--conv",dest='conv',help="Convergence limit. Default 2.5e-5",default='2.5e-5')
-	parser.add_option('',"--sourceTEs",dest='ste',help="Source TEs for models. ex: -ste 2,3 ; -ste 0 for all, -1 for opt. com. Default -1.",default=0-1)	
-	parser.add_option('',"--combmode",dest='combmode',help="Combination scheme for TEs: t2s (Posse 1999, default),ste(Poser)",default='t2s')	
-	parser.add_option('',"--denoiseTEs",dest='dne',action='store_true',help="Denoise each TE dataset separately",default=False)	
+	parser.add_option('',"--sourceTEs",dest='ste',help="Source TEs for models. ex: -ste 2,3 ; -ste 0 for all, -1 for opt. com. Default -1.",default=0-1)
+	parser.add_option('',"--combmode",dest='combmode',help="Combination scheme for TEs: t2s (Posse 1999, default),ste(Poser)",default='t2s')
+	parser.add_option('',"--denoiseTEs",dest='dne',action='store_true',help="Denoise each TE dataset separately",default=False)
 	parser.add_option('',"--initcost",dest='initcost',help="Initial cost func. for ICA: pow3,tanh(default),gaus,skew",default='tanh')
-	parser.add_option('',"--finalcost",dest='finalcost',help="Final cost func, same opts. as initial",default='tanh')	
+	parser.add_option('',"--finalcost",dest='finalcost',help="Final cost func, same opts. as initial",default='tanh')
 	parser.add_option('',"--stabilize",dest='stabilize',action='store_true',help="Stabilize convergence by reducing dimensionality, for low quality data",default=False)
 	parser.add_option('',"--fout",dest='fout',help="Output TE-dependence Kappa/Rho SPMs",action="store_true",default=False)
 	parser.add_option('',"--filecsdata",dest='filecsdata',help="Save component selection data",action="store_true",default=False)
@@ -946,14 +946,14 @@ if __name__=='__main__':
 
 	print "-- ME-PCA/ME-ICA Component for ME-ICA %s--" % __version__
 
-	if options.tes==None or options.data==None: 
-		print "*+ Need at least data and TEs, use -h for help."		
+	if options.tes==None or options.data==None:
+		print "*+ Need at least data and TEs, use -h for help."
 		sys.exit()
 
 	print "++ Loading Data"
 	tes = np.fromstring(options.tes,sep=',',dtype=np.float32)
 	ne = tes.shape[0]
-	catim  = nib.load(options.data)	
+	catim  = nib.load(options.data)
 	head   = catim.get_header()
 	head.extensions = []
 	head.set_sform(head.get_sform(),code=1)
@@ -971,15 +971,15 @@ if __name__=='__main__':
 	if options.label!=None: dirname='%s' % '.'.join(['TED',options.label])
 	else: dirname='TED'
 	os.system('mkdir %s' % dirname)
-	if options.mixm!=None: 
+	if options.mixm!=None:
 		try: os.system('cp %s %s/meica_mix.1D; cp %s %s/%s' % (options.mixm,dirname,options.mixm,dirname,os.path.basename(options.mixm)))
 		except: pass
-	if options.ctab!=None: 
+	if options.ctab!=None:
 		try: os.system('cp %s %s/comp_table.txt; cp %s %s/%s' % (options.mixm,dirname,options.mixm,dirname,os.path.basename(options.mixm)))
 		except: pass
 
 	os.chdir(dirname)
-	
+
 	print "++ Computing Mask"
 	mask,masksum = makeadmask(catd,min=False,getsum=True)
 
@@ -999,7 +999,7 @@ if __name__=='__main__':
 	#Optimally combine data
 	OCcatd = optcom(catd,t2s,tes,mask)
 
-	if not options.no_gscontrol: 
+	if options.raw_gscontrol:
 		gscontrol_raw()
 
 	if options.mixm == None:
@@ -1008,7 +1008,7 @@ if __name__=='__main__':
 		if 'DEBUG' in sys.argv:
 			import ipdb
 			ipdb.set_trace()
-		
+
 		nc,dd = tedpca(options.ste)
 		mmix_orig = tedica(dd,cost=options.initcost)
 		np.savetxt('__meica_mix.1D',mmix_orig)
@@ -1029,7 +1029,7 @@ if __name__=='__main__':
 
 	if len(acc)==0:
 		print "\n** WARNING! No BOLD components detected!!! Please check data and results!\n"
-    
+
 	writeresults()
 	gscontrol_mmix()
-	if options.dne: writeresults_echoes()    
+	if options.dne: writeresults_echoes()
