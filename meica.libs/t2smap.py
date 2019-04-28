@@ -3,10 +3,10 @@ __version__="v3.1 beta1"
 welcome_block="""
 # Multi-Echo ICA, Version %s
 # See http://dx.doi.org/10.1016/j.neuroimage.2011.12.028
-# Kundu, P., Inati, S.J., Evans, J.W., Luh, W.M. & Bandettini, P.A. Differentiating 
+# Kundu, P., Inati, S.J., Evans, J.W., Luh, W.M. & Bandettini, P.A. Differentiating
 #	BOLD and non-BOLD signals in fMRI time series using multi-echo EPI. NeuroImage (2011).
 #
-# Kundu, P., Inati, S.J., Evans, J.W., Luh, W.M. & Bandettini, P.A. Differentiating 
+# Kundu, P., Inati, S.J., Evans, J.W., Luh, W.M. & Bandettini, P.A. Differentiating
 #   BOLD and non-BOLD signals in fMRI time series using multi-echo EPI. NeuroImage (2011).
 # http://dx.doi.org/10.1016/j.neuroimage.2011.12.028
 #
@@ -19,14 +19,41 @@ import os
 from optparse import OptionParser
 import numpy as np
 import nibabel as nib
+import sys
+import math
 from sys import stdout,argv
 
 import scipy.stats as stats
 
-if 'DEBUG' in argv: 
+if 'DEBUG' in argv:
 	import ipdb
 	debug_mode = True
-else: debug_mode = False
+else:
+    debug_mode = False
+
+def fd(mot):
+    m = mot
+    dmdt = m[1:-1]-m[0:-2]
+    rms_dmdt = np.sqrt(np.mean(np.abs(dmdt)**2,1))
+    rms_dmdt = np.concatenate([[rms_dmdt[0]], rms_dmdt, [rms_dmdt[-1]]])
+    return rms_dmdt
+
+def wlstsq(A, B, W):
+    #import pdb; pdb.set_trace()
+    Aw = A * np.sqrt(W[:,np.newaxis])
+    Bw = B * np.sqrt(W[:,np.newaxis])
+    return np.linalg.lstsq(Aw, Bw)
+
+def weighted_avg_and_std(values, weights, axis):
+    """
+    Return the weighted average and standard deviation.
+
+    values, weights -- Numpy ndarrays with the same shape.
+    """
+    average = np.average(values, weights=weights, axis=axis)
+    # Fast and numerically precise:
+    variance = np.average((values-average)**2, weights=weights, axis=axis)
+    return (average, math.sqrt(variance))
 
 def scoreatpercentile(a, per, limit=(), interpolation_method='lower'):
     """
@@ -55,8 +82,8 @@ def scoreatpercentile(a, per, limit=(), interpolation_method='lower'):
 
 def niwrite(data,affine, name , header=None):
 	data[np.isnan(data)]=0
-	stdout.write(" + Writing file: %s ...." % name) 
-	
+	stdout.write(" + Writing file: %s ...." % name)
+
 	thishead = header
 	if thishead == None:
 		thishead = head.copy()
@@ -65,7 +92,7 @@ def niwrite(data,affine, name , header=None):
 	outni = nib.Nifti1Image(data,affine,header=thishead)
 	outni.set_data_dtype('float64')
 	outni.to_filename(name)
-	
+
 
 	print 'done.'
 
@@ -93,7 +120,7 @@ def uncat2echos(data,Ne):
 	Input:
 	data shape is (nx,ny,Ne,nz,nt)
 	"""
-    	nx,ny = data.shape[0:2]
+	nx,ny = data.shape[0:2]
 	nz = data.shape[2]*Ne
 	if len(data.shape) >4:
 		nt = data.shape[4]
@@ -117,10 +144,10 @@ def makemask(cdat,min=True,getsum=False):
 		emeans = cdat[:,:,:,:,:].mean(-1)
 		medv = emeans[:,:,:,0] == stats.scoreatpercentile(emeans[:,:,:,0][emeans[:,:,:,0]!=0],33,interpolation_method='higher')
 		lthrs = np.squeeze(np.array([ emeans[:,:,:,ee][medv]/3 for ee in range(Ne) ]))
-		
+
 		if len(lthrs.shape)==1: lthrs = np.atleast_2d(lthrs).T
 		lthrs = lthrs[:,lthrs.sum(0).argmax()]
-		
+
 		mthr = np.ones([nx,ny,nz,ne])
 		for ee in range(Ne): mthr[:,:,:,ee]*=lthrs[ee]
 		mthr = np.abs(emeans[:,:,:,:])>mthr
@@ -240,15 +267,20 @@ def t2sadmap(catd,mask,tes):
 		X = np.tile(x,(1,nt))
 		X = np.sort(X)[:,::-1].transpose()
 
-		beta,res,rank,sing = np.linalg.lstsq(X,B)
-		t2s = 1/beta[1,:].transpose()
-		s0  = np.exp(beta[0,:]).transpose()
+        if weights is not None:
+            #import pdb; pdb.set_trace()
+            weights_Ne = np.squeeze(np.tile(weights,[1,Ne]))
+            beta,res,rank,sing = wlstsq(X,B,weights_Ne)
+        else:
+            beta,res,rank,sing = np.linalg.lstsq(X,B)
+        t2s = 1/beta[1,:].transpose()
+        s0  = np.exp(beta[0,:]).transpose()
 
-		t2s[np.isinf(t2s)] = 500.
-		s0[np.isnan(s0)] = 0.
+	t2s[np.isinf(t2s)] = 500.
+	s0[np.isnan(s0)] = 0.
 
-		t2ss[:,:,:,ne-2] = np.squeeze(unmask(t2s,mask))
-		s0vs[:,:,:,ne-2] = np.squeeze(unmask(s0,mask))
+	t2ss[:,:,:,ne-2] = np.squeeze(unmask(t2s,mask))
+	s0vs[:,:,:,ne-2] = np.squeeze(unmask(s0,mask))
 
 	fl = np.zeros([nx,ny,nz,len(tes)-2+1])
 	for ne in range(Ne-1):
@@ -261,7 +293,7 @@ def t2sadmap(catd,mask,tes):
 
 	t2sa = unmask(t2ss[fl],masksum>1)
 	s0va = unmask(s0vs[fl],masksum>1)
-	
+
 	return t2sa,s0va,t2ss,s0vs
 
 def optcom(data,t2s,tes,mask):
@@ -279,19 +311,19 @@ def optcom(data,t2s,tes,mask):
 
 	out.shape = (nx,ny,nz,Nt)
 	"""
-	nx,ny,nz,Ne,Nt = data.shape 
+	nx,ny,nz,Ne,Nt = data.shape
 
 	fdat = fmask(data,mask)
 	ft2s = fmask(t2s,mask)
-	
+
 	tes = tes[np.newaxis,:]
 	ft2s = ft2s[:,np.newaxis]
-	
+
 	if options.combmode == 'ste':
 		alpha = fdat.mean(-1)*tes
-	else: 
+	else:
 		alpha = tes * np.exp(-tes /ft2s)
-	
+
 	alpha = np.tile(alpha[:,:,np.newaxis],(1,1,Nt))
 
 	fout  = np.average(fdat,axis = 1,weights=alpha)
@@ -305,71 +337,85 @@ def optcom(data,t2s,tes,mask):
 
 if __name__=='__main__':
 
-	parser=OptionParser()
-	parser.add_option('-d',"--orig_data",dest='data',help="Spatially Concatenated Multi-Echo Dataset",default=None)
-	parser.add_option('-c',"--combmode",dest='combmode',help="Combination scheme for TEs: t2s (Posse 1999),ste(Poser,2006 default)",default='ste')	
-	parser.add_option('-l',"--label",dest='label',help="Optional label to tag output files with",default=None)
-	parser.add_option('-e',"--TEs",dest='tes',help="Echo times (in ms) ex: 15,39,63",default=None)
+    parser=OptionParser()
+    parser.add_option('-d',"--orig_data",dest='data',help="Spatially Concatenated Multi-Echo Dataset",default=None)
+    parser.add_option('-c',"--combmode",dest='combmode',help="Combination scheme for TEs: t2s (Posse 1999),ste(Poser,2006 default)",default='ste')
+    parser.add_option('-l',"--label",dest='label',help="Optional label to tag output files with",default=None)
+    parser.add_option('-e',"--TEs",dest='tes',help="Echo times (in ms) ex: 15,39,63",default=None)
+    parser.add_option('-w',"--weights",dest='weights',help="Weights to use in computing T2* map",default=None)
+    parser.add_option('-m',"--motion",dest='motion',help="Motion parameters to make weights",default=None)
+    (options,args) = parser.parse_args()
 
-	(options,args) = parser.parse_args()
+    print "-- T2* Map Component for ME-ICA %s --" % (__version__)
 
-	print "-- T2* Map Component for ME-ICA %s --" % (__version__)
+    if options.tes==None or options.data==None:
+        print "*+ Need at least data and TEs, use -h for help."
+        sys.exit()
 
-	if options.tes==None or options.data==None: 
-		print "*+ Need at least data and TEs, use -h for help."		
-		sys.exit()
+    if options.weights!=None and options.motion!=None:
+        print("Can't specify both weights and motion")
 
-	if options.label!=None:
-		suf='_%s' % str(options.label)
-	else:
-		suf=''
+    if options.label!=None:
+        suf='_%s' % str(options.label)
+    else:
+        suf=''
 
-	print "++ Loading Data"
-	tes = np.fromstring(options.tes,sep=',',dtype=np.float32)
-	ne = tes.shape[0]
-	catim  = nib.load(options.data)	
-	head   = catim.get_header()
-	head.extensions = []
-	head.set_sform(head.get_sform(),code=1)
-	aff = catim.get_affine()
-	catd = cat2echos(catim.get_data(),ne)
-	nx,ny,nz,Ne,nt = catd.shape
-	mu  = catd.mean(axis=-1)
-	sig  = catd.std(axis=-1)
-	
-	print "++ Computing Mask"
-	mask,masksum  = makemask(catd,min=False,getsum=True)
+    print "++ Loading Data"
+    tes = np.fromstring(options.tes,sep=',',dtype=np.float32)
+    ne = tes.shape[0]
+    catim  = nib.load(options.data)
+    head   = catim.get_header()
+    head.extensions = []
+    head.set_sform(head.get_sform(),code=1)
+    aff = catim.get_affine()
+    catd = cat2echos(catim.get_data(),ne)
+    nx,ny,nz,Ne,nt = catd.shape
+    mu  = catd.mean(axis=-1)
+    sig  = catd.std(axis=-1)
 
-	print "++ Computing Adaptive T2* map"
-	t2s,s0,t2ss,s0vs   = t2sadmap(catd,mask,tes)
-	niwrite(masksum,aff,'masksum%s.nii' % suf )
-	niwrite(t2ss,aff,'t2ss%s.nii' % suf )
-	niwrite(s0vs,aff,'s0vs%s.nii' % suf )
+    weights = None
+    if options.weights is not None:
+        weights = np.squeeze(np.loadtxt(options.weights))
+        assert weights.ndim == 1
+    if options.motion is not None:
+        motion = np.loadtxt(options.motion)
+        assert motion.ndim == 2 and motion.shape[0] > motion.shape[1]
+        motion = fd(motion)
+        weights = 1./np.abs(motion)
 
-	print "++ Computing optimal combination"
-	tsoc = np.array(optcom(catd,t2s,tes,mask),dtype=float)
+    print "++ Computing Mask"
+    mask,masksum  = makemask(catd,min=False,getsum=True)
 
-	#Clean up numerical errors
-	t2sm = t2s.copy()
-	tsoc[np.isnan(tsoc)]=0
-	s0[np.isnan(s0)]=0
-	s0[s0<0]=0
-	t2s[np.isnan(t2s)]=0
-	t2s[t2s<0]=0
-	t2sm[np.isnan(t2sm)]=0
-	t2sm[t2sm<0]=0
+    print "++ Computing Adaptive T2* map"
+    t2s,s0,t2ss,s0vs   = t2sadmap(catd,mask,tes)
+    niwrite(masksum,aff,'masksum%s.nii' % suf )
+    niwrite(t2ss,aff,'t2ss%s.nii' % suf )
+    niwrite(s0vs,aff,'s0vs%s.nii' % suf )
 
-	niwrite(tsoc,aff,'ocv%s.nii' % suf)
-	niwrite(s0,aff,'s0v%s.nii' % suf)
-	niwrite(t2s,aff,'t2sv%s.nii' % suf )
-	niwrite(t2sm,aff,'t2svm%s.nii' % suf )
-	
-	
+    print "++ Computing optimal combination"
+    tsoc = np.array(optcom(catd,t2s,tes,mask),dtype=float)
 
-	
+    #Clean up numerical errors
+    t2sm = t2s.copy()
+    tsoc[np.isnan(tsoc)]=0
+    s0[np.isnan(s0)]=0
+    s0[s0<0]=0
+    t2s[np.isnan(t2s)]=0
+    t2s[t2s<0]=0
+    t2sm[np.isnan(t2sm)]=0
+    t2sm[t2sm<0]=0
+
+    niwrite(tsoc,aff,'ocv%s.nii' % suf)
+    niwrite(s0,aff,'s0v%s.nii' % suf)
+    niwrite(t2s,aff,'t2sv%s.nii' % suf )
+    niwrite(t2sm,aff,'t2svm%s.nii' % suf )
 
 
-	
+
+
+
+
+
 
 
 
