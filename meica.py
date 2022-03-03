@@ -143,9 +143,9 @@ def dep_check():
         if version_checker(numpy.__version__, 1.5) == False:
             fails += 1
             print("*+ Numpy version is too old! Please upgrade to Numpy >=1.5.x!")
-        import numpy.__config__ as nc
-
-        if nc.blas_opt_info == {}:
+        # Check BLAS installation (python 3)
+        blas_check = True in ['blas' in ff for ff in dir(numpy.__config__)]
+        if not blas_check:
             fails += 1
             print("*+ Numpy is not linked to BLAS! Please check Numpy installation.")
     if scipy_installed:
@@ -498,8 +498,9 @@ BOLD and non-BOLD signals in fMRI time series using multi-echo EPI. NeuroImage (
 )
 
 # Parse dataset input names
-if options.dsinputs == "" or options.TR == 0:
-    dep_check()
+if (options.dsinputs == "" or options.TR == 0):
+    if not options.skip_check:
+        dep_check()
     print("*+ Need at least dataset inputs and TE. Try meica.py -h")
     sys.exit()
 if os.path.abspath(os.path.curdir).__contains__("meica."):
