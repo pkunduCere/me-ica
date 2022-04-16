@@ -29,7 +29,6 @@ from re import split as resplit
 import re
 from os import system, getcwd, mkdir, chdir, popen
 import os.path
-from string import rstrip, split
 from optparse import OptionParser, OptionGroup
 
 parser = OptionParser()
@@ -86,19 +85,19 @@ sl.append("cd %s " % walignp_dirname)
 
 def dsprefix(idn):
     def prefix(datasetname):
-        return split(datasetname, "+")[0]
+        return datasetname.split("+")[0]
 
-    if len(split(idn, ".")) != 0:
+    if len(idn.split(".")) != 0:
         if (
-            split(idn, ".")[-1] == "HEAD"
-            or split(idn, ".")[-1] == "BRIK"
-            or split(idn, ".")[-2:] == ["BRIK", "gz"]
+            idn.split(".")[-1] == "HEAD"
+            or idn.split(".")[-1] == "BRIK"
+            or idn.split(".")[-2:] == ["BRIK", "gz"]
         ):
             return prefix(idn)
-        elif split(idn, ".")[-1] == "nii" and not split(idn, ".")[-1] == "nii.gz":
-            return ".".join(split(idn, ".")[:-1])
-        elif split(idn, ".")[-2:] == ["nii", "gz"]:
-            return ".".join(split(idn, ".")[:-2])
+        elif idn.split(".")[-1] == "nii" and not idn.split(".")[-1] == "nii.gz":
+            return ".".join(idn.split(".")[:-1])
+        elif idn.split(".")[-2:] == ["nii", "gz"]:
+            return ".".join(idn.split(".")[:-2])
         else:
             return prefix(idn)
     else:

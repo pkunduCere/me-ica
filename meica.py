@@ -23,7 +23,6 @@ welcome_block = """
     __version__,
 )
 
-# import ipdb
 import sys
 import subprocess
 from re import split as resplit
@@ -33,25 +32,23 @@ import os.path
 # from string import rstrip, split  # python 3 deprecated string import
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 
-# Aliases
-split = str.strip
-
 # Filename parser for NIFTI and AFNI files
 def dsprefix(idn):
+    # import ipdb; ipdb.set_trace()
     def prefix(datasetname):
-        return str.split(datasetname, "+")[0]
+        return datasetname.split('+')[0]
 
-    if len(split(idn, ".")) != 0:
+    if len(idn.split(".")) != 0:
         if (
-            split(idn, ".")[-1] == "HEAD"
-            or split(idn, ".")[-1] == "BRIK"
-            or split(idn, ".")[-2:] == ["BRIK", "gz"]
+            idn.split(".") == "HEAD"
+            or idn.split(".")[-1] == "BRIK"
+            or idn.split(".")[-2:] == ["BRIK","gz"]
         ):
             return prefix(idn)
-        elif split(idn, ".")[-1] == "nii" and not split(idn, ".")[-1] == "nii.gz":
-            return ".".join(split(idn, ".")[:-1])
-        elif split(idn, ".")[-2:] == ["nii", "gz"]:
-            return ".".join(split(idn, ".")[:-2])
+        elif idn.split(".")[-1] == "nii" and not idn.split(".")[-1] == "nii.gz":
+            return ".".join(idn.split(".")[:-1])
+        elif idn.split(".")[-2:] == ["nii", "gz"]:
+            return ".".join(idn.split(".")[:-2])
         else:
             return prefix(idn)
     else:
@@ -747,6 +744,7 @@ if options.anat != "":
         nsmprage = "%s_ns.nii.gz" % (anatprefix)
 
 # Copy in functional datasets as NIFTI (if not in NIFTI already), calculate rigid body alignment
+#import ipdb; ipdb.set_trace()
 vrbase = getdsname(0, True)
 logcomment("Copy in functional datasets, reset NIFTI tags as needed", level=1)
 for e_ii in range(len(datasets)):
