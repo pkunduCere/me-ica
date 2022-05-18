@@ -728,7 +728,7 @@ def dice(A,B):
     else:
         return 0.
 
-def spatclust(data,mask,csize,thr,header,aff,infile=None,dindex=0,tindex=0):
+def spatclust(data,mask,csize,thr,header,aff,infile=None,dindex=0,tindex=0, prefix=''):
     if infile==None:
         data = data.copy()
         data[data<thr] = 0
@@ -737,8 +737,9 @@ def spatclust(data,mask,csize,thr,header,aff,infile=None,dindex=0,tindex=0):
     addopts=""
     if data is not None and len(np.squeeze(data).shape)>1 and dindex+tindex==0: addopts="-doall"
     else: addopts="-1dindex %s -1tindex %s" % (str(dindex),str(tindex))
-    os.system('3dmerge -overwrite %s -dxyz=1  -1clust 1 %i -1thresh %.02f -prefix __clout.nii.gz %s' % (addopts,int(csize),float(thr),infile))
-    clustered = fmask(nib.load('__clout.nii.gz').get_data(),mask)!=0
+    os.system('3dmerge -overwrite %s -dxyz=1  -1clust 1 %i -1thresh %.02f -prefix %s__clout.nii.gz %s' % (addopts, int(csize), float(thr), prefix, infile))
+    clustered = fmask(nib.load('%s__clout.nii.gz' % prefix).get_data(),mask)!=0
+    os.system('rm %s__clout.nii.gz' % prefix)
     return clustered
 
 def rankvec(vals):
